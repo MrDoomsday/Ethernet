@@ -15,10 +15,6 @@ module coder64b66b (
 
 );
 
-/**Declaration**/
-bit [63:0] m_tdata_old;
-
-
 /**Logic**/
 assign s_axis_tready = m_axis_tready;
 
@@ -28,9 +24,21 @@ always_ff @ (posedge clk or negedge reset_n) begin
 end
 
 //Scrambler polynom G(x) = 1 + x^39 + x^58
+function bit [63:0] coder_6466b(bit [63:0] data_in, bit [63:0] data_out);
+    bit [127:0] concat_bit; 
+    bit [63:0] result;
+    
+    concat_bit = {64'h0, data_out};
+    for(int i = 0; i < 64; i++) begin
+        concat_bit[64+i] = data_in[i] ^ concat_bit[64+i-39] ^ concat_bit[64+i-58];
+    end
+
+    return concat_bit[127:64];
+endfunction
+
+
 always_ff @ (posedge clk) begin
-    if(s_axis_tready && s_axis_tvalid) m_axis_tdata <= {s_axis_ttype, s_axis_tdata ^ {m_axis_tdata[24:0], m_tdata_old[63:25]} ^ {m_axis_tdata[5:0], m_tdata_old[63:25]}};
-    if(m_axis_tready && m_axis_tvalid) m_tdata_old <= m_axis_tdata;
+    if(s_axis_tready && s_axis_tvalid) m_axis_tdata <= {s_axis_ttype, coder_6466b(s_axis_tdata, m_axis_tdata)};
 end
     
 endmodule
