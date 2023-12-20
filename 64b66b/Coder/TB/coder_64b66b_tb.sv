@@ -209,7 +209,7 @@ task check_transaction(int master_word_amount);
 
         if(s_in.ttype != s_out.ttype) begin
             $error("---------Type packet FAILED---------, s_type = %h, m_type = %h", s_in.ttype, s_out.ttype);
-            // $stop();
+            $stop();
         end
 
         //распишем однобитный полином для тестирования 
@@ -224,7 +224,7 @@ task check_transaction(int master_word_amount);
 
         if(s_out.tdata != data_out_etalon) begin
             $error("---------data packet FAILED, data output = %h, etalon output = %h---------", s_out.tdata, data_out_etalon);
-            // $stop();
+            $stop();
         end
         else begin
             $display("**********data packet PASSED, data input = %h, data output = %h**********", s_out.tdata, data_out_etalon);
