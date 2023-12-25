@@ -8,7 +8,7 @@ module decoder64b66b (
     output  bit             s_axis_tready,
 
 //AXI Stream output
-    output   bit     [1:0]   m_axis_ttype,//utype word, 2'b11, 2'b00 - illegal
+    output   bit     [1:0]   m_axis_ttype,//user type word, 2'b11, 2'b00 - illegal
     output   bit     [63:0]  m_axis_tdata,
     output   bit             m_axis_tvalid,
     input    bit             m_axis_tready
