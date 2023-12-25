@@ -1,7 +1,7 @@
 class generator;
 
-    decoder_cfg gen_cfg;
-    mailbox #(packet) mbx_gen2scb;//эталонная послеовательность, которая подвергается скремблированию
+    decoder_cfg cfg;
+    mailbox #(packet) mbx_gen2scb;//эталонная последовательность, которая подвергается скремблированию
     mailbox #(packet) mbx_gen2drv;
     
 
@@ -13,7 +13,7 @@ class generator;
         packet p;
         bit [65:0] data_array [];//промежуточный массив для скремблирования данных и добавления смещающих бит
         bit [65:0] init_rand_bits;
-        bit [57:0] x;//для скремблирования полезной нагрузки
+        bit [57:0] x;//сдвиговый регистр для скремблирования полезной нагрузки
         
         /*
             1. Генерация стрима 66b
@@ -22,9 +22,10 @@ class generator;
             4. Генерируем случайное количество бит для смещения синхромаркера 64b/66b
             5. Отправляем в очередь для драйвера mbx_gen2drv
         */
-        data_array = new[gen_cfg.count_packet_gen];
+        data_array = new[cfg.count_packet_gen];
 
-        for(int i = 0; i < gen_cfg.count_packet_gen; i++) begin
+        for(int i = 0; i < cfg.count_packet_gen; i++) begin
+            p = new();//создаем экземпляр одной транзакции
             if(!p.randomize()) begin
                 $error();
                 $display("Randomize packet error");
@@ -49,10 +50,10 @@ class generator;
                     $error();
                     $display("Error initial padding randomize!");
                 end
-                p.tdata = 66'(data_array[i] << gen_cfg.count_init_rand_bits) | 66'(init_rand_bits >> (66 - gen_cfg.count_init_rand_bits));
+                p.tdata = 66'(data_array[i] << cfg.count_init_rand_bits) | 66'(init_rand_bits >> (66 - cfg.count_init_rand_bits));
             end
             else begin
-                p.tdata = 66'(data_array[i] << gen_cfg.count_init_rand_bits) | 66'(data_array[i-1] >> (66 - gen_cfg.count_init_rand_bits));
+                p.tdata = 66'(data_array[i] << cfg.count_init_rand_bits) | 66'(data_array[i-1] >> (66 - cfg.count_init_rand_bits));
             end
             mbx_gen2drv.put(p);//добавляем в очередь для отправки драйвером
         end

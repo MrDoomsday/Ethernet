@@ -1,13 +1,30 @@
 //конфигурация тестового стенда
     `include "decoder_cfg.sv"
+
 // интерфейсы для подключения к портам модуля
     `include "axis_sink.sv"
     `include "axis_source.sv"
+
 //экземпляр класса пакета
     `include "packet.sv"
 
 //генератор
     `include "generator.sv"
+
+//драйвер
+    `include "driver.sv"
+
+//монитор
+    `include "monitor.sv"
+
+//агент
+    `include "agent.sv"
+
+//окружение
+    `include "environment.sv"
+
+//тест
+    `include "test.sv"
 
 
 module decoder_tb();
@@ -47,7 +64,7 @@ module decoder_tb();
     task gen_reset_n();
         reset_n <= 1'b0;
         repeat(10) @(posedge clk);
-        reset_n <= 1'b0;
+        reset_n <= 1'b1;
     endtask
 
 
@@ -56,6 +73,14 @@ module decoder_tb();
         #(PERIOD/2);
         clk = 1'b1;
         #(PERIOD/2);
+    end
+
+    initial begin
+        test test_n = new(intf_axis_sink, intf_axis_source);
+        fork
+            gen_reset_n();
+            test_n.run();
+        join
     end
     
 endmodule
