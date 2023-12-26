@@ -31,7 +31,7 @@ class driver_sink;
             $display("Driver error delay randomize");
         end
 
-        vif_axis_sink.tdata <= p.tdata;
+        vif_axis_sink.tdata <= p.tdata[63:0];
         vif_axis_sink.tvalid <= 1'b1;
         do begin
             @(posedge vif_axis_sink.clk);

@@ -11,7 +11,7 @@ class monitor_source;
     endtask
 
     virtual task mon_src();
-        packet p;
+        packet p = new();
 
         @(posedge vif_axis_source.clk);
         if(vif_axis_source.tready && vif_axis_source.tvalid) begin

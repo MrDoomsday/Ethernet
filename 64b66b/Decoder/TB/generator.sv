@@ -14,7 +14,7 @@ class generator;
         bit [65:0] data_array [];//промежуточный массив для скремблирования данных и добавления смещающих бит
         bit [65:0] init_rand_bits;
         bit [57:0] x;//сдвиговый регистр для скремблирования полезной нагрузки
-        
+        bit aligned_queue [$];//в данную очередь мы складываем побитно 66-битные данные, а потом восстанавливаем 64-битные. Это самый просто вариант
         /*
             1. Генерация стрима 66b
             2. Помещаем в mailbox эталонную последовательность для будущего анализа sequencer'ом 
@@ -50,12 +50,24 @@ class generator;
                     $error();
                     $display("Error initial padding randomize!");
                 end
-                p.tdata = 66'(data_array[i] << cfg.count_init_rand_bits) | 66'(init_rand_bits >> (66 - cfg.count_init_rand_bits));
+                //добавляем биты смещения
+                for(int j = 0; j < cfg.count_init_rand_bits; j++) begin
+                    aligned_queue.push_back(init_rand_bits[j]);
+                end
             end
-            else begin
-                p.tdata = 66'(data_array[i] << cfg.count_init_rand_bits) | 66'(data_array[i-1] >> (66 - cfg.count_init_rand_bits));
+
+            //добавляем текущее слово к общему массиву
+            for(int j = 0; j < 66; j++) begin
+                aligned_queue.push_back(data_array[i][j]);
             end
-            mbx_gen2drv.put(p);//добавляем в очередь для отправки драйвером
+
+            if(aligned_queue.size() >= 64) begin
+                p.tdata[65:64] = 2'b00;
+                for(int j = 0; j < 64; j++) begin
+                    p.tdata[j] = aligned_queue.pop_front();
+                end
+                mbx_gen2drv.put(p);//добавляем в очередь для отправки драйвером
+            end
         end
     endtask
 

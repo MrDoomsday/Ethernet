@@ -33,7 +33,7 @@ bit sync_ok;
 
 //для сдвигового регистра
 bit [6:0] pos_sync;//указывает позицию смещения в сдвиговом регистре
-bit [63:0] data_sync;
+bit [65:0] data_sync;
 
 //pipeline
 always_ff @ (posedge clk) begin
