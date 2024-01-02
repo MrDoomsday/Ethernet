@@ -17,6 +17,8 @@
 //монитор
     `include "monitor.sv"
 
+//checker
+    `include "scoreboard.sv"
 //агент
     `include "agent.sv"
 

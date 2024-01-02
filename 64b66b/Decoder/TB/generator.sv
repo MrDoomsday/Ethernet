@@ -27,8 +27,8 @@ class generator;
         for(int i = 0; i < cfg.count_packet_gen; i++) begin
             p = new();//создаем экземпляр одной транзакции
             if(!p.randomize()) begin
-                $error();
                 $display("Randomize packet error");
+                $fatal();
             end
             mbx_gen2scb.put(p);
             data_array[i] = p.tdata;
@@ -47,8 +47,8 @@ class generator;
                 if(!std::randomize(init_rand_bits) with {
                     init_rand_bits[65:64] inside {2'b00, 2'b11};
                 }) begin
-                    $error();
                     $display("Error initial padding randomize!");
+                    $fatal();
                 end
                 //добавляем биты смещения
                 for(int j = 0; j < cfg.count_init_rand_bits; j++) begin
@@ -62,6 +62,7 @@ class generator;
             end
 
             if(aligned_queue.size() >= 64) begin
+                p = new();//создаем новый объект пакета. Если этого не сделать, то будем работать со ссылкой на старый
                 p.tdata[65:64] = 2'b00;
                 for(int j = 0; j < 64; j++) begin
                     p.tdata[j] = aligned_queue.pop_front();
