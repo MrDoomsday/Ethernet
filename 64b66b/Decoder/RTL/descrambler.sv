@@ -25,12 +25,12 @@ function bit [63:0] coder_6466b(bit [63:0] data_in, bit [63:0] data_old);
     bit [127:0] concat_bit; 
     bit [63:0] result;
     
-    concat_bit = {64'h0, data_old};
+    concat_bit = {data_in, data_old};
     for(int i = 0; i < 64; i++) begin
-        concat_bit[64+i] = data_in[i] ^ concat_bit[64+i-39] ^ concat_bit[64+i-58];
+        result[i] = data_in[i] ^ concat_bit[64+i-39] ^ concat_bit[64+i-58];
     end
 
-    return concat_bit[127:64];
+    return result;
 endfunction
 
 
