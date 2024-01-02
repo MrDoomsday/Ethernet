@@ -66,7 +66,7 @@ class scoreboard;
         end
 
         cnt_complete_transaction++;
-        if(cnt_complete_transaction >= cfg.count_packet_gen - cnt_complete_transaction) begin
+        if(cnt_complete_transaction >= cfg.count_packet_gen/5) begin
             $display("Count transaction check = %0d", cnt_complete_transaction);
             done = 1;//мы проверили достаточное количество пакетов
         end

@@ -18,12 +18,12 @@ class decoder_cfg;
     rand int source_ready_delay_disable_min;
     rand int source_ready_delay_disable_max;
 
-    int timeout_cycles = 10_000_000;
+    int timeout_cycles = 100_000_000;
     
 
     constraint count_packet_gen_c {
         count_init_rand_bits inside {[0:63]};
-        count_packet_gen inside {[50000:100000]};
+        count_packet_gen inside {[500000:1000000]};
     }
 
     constraint sink_transaction_pause_c {
