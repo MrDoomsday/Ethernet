@@ -1,4 +1,4 @@
-module decoder64b66b (
+module decoder_64b66b (
     input bit clk,
     input bit reset_n,
 
