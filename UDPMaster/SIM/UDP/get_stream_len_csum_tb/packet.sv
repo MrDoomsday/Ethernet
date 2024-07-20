@@ -18,7 +18,13 @@ class axis_packet;
         len > 0;
         len -> {
             data.size() == len;
-        }  
+        }
+        keep inside {4'b1111, 4'b1110, 4'b1100, 4'b1000};
+        //необходимо обнулять неиспользуемые байты данных (обязательное требования для расчета контрольной суммы)
+        ~keep[0] -> data[len-1][7:0] == 8'h0;
+        ~keep[1] -> data[len-1][15:8] == 8'h0;
+        ~keep[2] -> data[len-1][23:16] == 8'h0;
+        ~keep[3] -> data[len-1][31:24] == 8'h0;
     }
 
     constraint c_ip_fields {

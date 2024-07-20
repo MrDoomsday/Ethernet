@@ -1,0 +1,106 @@
+\documentclass[a4paper,12pt]{article}
+
+\usepackage[left=1.5cm,top=1.5cm,right=1.5cm,bottom=1.5cm,includehead,includefoot]{geometry}
+
+\usepackage{cmap}
+\usepackage[T2A]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[russian]{babel}
+\usepackage[pdftex]{graphicx}
+\usepackage{color}
+\usepackage{ulem}
+\usepackage{amsmath}
+\usepackage{xcolor}
+\usepackage{longtable}
+\usepackage{hyperref}
+\usepackage{import}
+\usepackage{bytefield}
+\usepackage{datetime}
+\usepackage{float}
+\usepackage{dirtree}
+\usepackage{colortbl}
+\usepackage{url}
+\usepackage{multirow}
+\graphicspath{{FIGURE/}}
+
+
+
+\title{\Huge\textbf{Спецификация на ядро UDPMaster}}
+\author{\huge RB}
+\date{\today}
+
+\pdfinfo{%
+	/Title    (Спецификация на ядро UDPMaster)
+	/Author   (RB)
+	/Creator  (RB)
+	/Producer (RB)
+	/Subject  (IP-core specification)
+	/Keywords (SystemVerilog, FPGA, UART, IP-core)
+}
+
+
+\begin{document}
+	\maketitle
+	\newpage
+	
+	
+	%
+	% --Список фигур---
+	%
+	\listoffigures
+	\addcontentsline{toc}{chapter}{\listfigurename}
+	\newpage
+	
+	% --Список таблиц---
+	%
+	\listoftables
+	\addcontentsline{toc}{chapter}{\listtablename}
+	\newpage
+	
+	
+	%
+	%---Chapters----
+	%
+	%
+	% Introduction
+	%
+	\section{Введение}
+	\label{sec:introduction}
+	
+	
+	
+	\section{UDP to AXI}
+	\label{sec:udp2axi}
+
+
+	\subsection{Режимы}
+	\label{subsec:modes_udp2axi}
+	Существует 4 режима транзакций AXI4, которые поддерживает модуль. 
+	
+	\subsubsection{Burst read}
+	\label{subsubsec:modes_burst_read}
+	
+
+	\begin{table}[H]
+		\begin{center}
+			\begin{tabular}{lcccc}
+				\rowcolor[gray]{0.7} {\tt Имя} & 31:24 & 23:16 & 15:8 & 7:0 \\ \hline \hline
+			\end{tabular}
+			\caption{Draft table ip header}
+			\label{tbl:burst_read_pkt_struct}
+		\end{center}
+	\end{table}
+
+	\subsubsection{Random read}
+	\label{subsubsec:modes_random_read}
+	
+
+	\subsubsection{Burst write}
+	\label{subsubsec:modes_burst_write}
+	
+	
+	\subsubsection{Random write}
+	\label{subsubsec:modes_random_write}
+	
+	
+\end{document}

@@ -43,7 +43,7 @@ module get_stream_len_csum #(
 
     logic   [2:0][15:0]     strm_len, strm_csum;
     wire                    rdy;
-    logic                   pkt_proc;//packet is processing
+    logic                   previous_last;//for detect start packet
     logic   [3:0]           cnt_vld_bytes;
 
 
@@ -138,15 +138,14 @@ module get_stream_len_csum #(
         end
     end
 
+    always_ff @ (posedge clk or negedge reset_n) begin
+        if(!reset_n) previous_last <= 1'b1;
+        else if(rdy && strm_tvld_reg[0]) begin
+            previous_last <= strm_tlast_reg[0];
+        end
+    end    
 
 //cascade 1
-    always_ff @ (posedge clk or negedge reset_n) begin
-        if(!reset_n) pkt_proc <= 1'b0;
-        else if(rdy && strm_tvld_reg[0]) begin
-            if(strm_tlast_reg[0]) pkt_proc <= 1'b0;//заканчивается обработка пакета
-            else pkt_proc <= 1'b1;
-        end
-    end
 
     always_ff @ (posedge clk or negedge reset_n) begin
         if(!reset_n) strm_tvld_reg[1] <= 1'b0;
@@ -155,7 +154,7 @@ module get_stream_len_csum #(
 
     always_ff @ (posedge clk) begin
         if(rdy) begin
-            if(strm_tvld_reg[0] && !pkt_proc) begin
+            if(strm_tvld_reg[0] && previous_last) begin
                 hdr_ip_dest_reg[1]      <= hdr_ip_dest_reg[0];
                 hdr_ip_src_reg[1]       <= hdr_ip_src_reg[0];
                 hdr_port_dest_reg[1]    <= hdr_port_dest_reg[0];
@@ -173,13 +172,13 @@ module get_stream_len_csum #(
 
     always_ff @ (posedge clk) begin
         if(rdy && strm_tvld_reg[0]) begin
-            if(pkt_proc) begin
-                strm_len[1] <= strm_len[1] + cnt_vld_bytes;
-                strm_csum[1] <= strm_csum_next[15:0] + {15'h0, strm_csum_next[16]};
-            end
-            else begin//сбрасываем в начальное положение
+            if(previous_last) begin//сбрасываем в начальное положение
                 strm_len[1] <= cnt_vld_bytes;
                 strm_csum[1] <= strm_csum[0];
+            end
+            else begin
+                strm_len[1] <= strm_len[1] + cnt_vld_bytes;
+                strm_csum[1] <= strm_csum_next[15:0] + {15'h0, strm_csum_next[16]};
             end
         end
     end

@@ -4,3 +4,9 @@
 *.cr.mti
 *.mpf
 *.wlf
+*.lof
+*.log
+*.lot
+*.out
+*.synctex.gz
+*.aux
