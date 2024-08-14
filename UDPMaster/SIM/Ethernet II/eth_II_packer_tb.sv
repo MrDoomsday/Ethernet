@@ -26,6 +26,7 @@ ethII_packer DUT (
     //заголовок идет синхронно с пакетом (при приеме первого слова заголовок уже выставлен)
     .hdr_mac_dest_i (s_mac_intf.dest  ),
     .hdr_mac_src_i  (s_mac_intf.src   ),//dest - на какой IP пойдет пакет, src - с какого IP пакет будет отправлен
+    .hdr_mac_type_i (s_mac_intf.ttype ),
     .hdr_mac_vld_i  (s_mac_intf.vld   ),
     .hdr_mac_rdy_o  (s_mac_intf.rdy   ),
 

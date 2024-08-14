@@ -30,9 +30,10 @@ class driver_axis;
     endtask
 
     virtual task reset_port();
-        vif_mac.dest      <= 48'h0;
-        vif_mac.src       <= 48'h0;//dest - на какой MAC пойдет пакет, src - с какого MAC пакет будет отправлен
-        vif_mac.vld      <= 1'b0;
+        vif_mac.dest        <= 48'h0;
+        vif_mac.src         <= 48'h0;//dest - на какой MAC пойдет пакет, src - с какого MAC пакет будет отправлен
+        vif_mac.ttype       <= 16'h0;
+        vif_mac.vld         <= 1'b0;
 
         vif_stream.tdata    <= 32'h0;
         vif_stream.tlast    <= 1'b0;
@@ -87,6 +88,7 @@ class driver_axis;
 
         vif_mac.dest    <= mp.dest;
         vif_mac.src     <= mp.src;
+        vif_mac.ttype   <= mp.ttype;
         vif_mac.vld     <= 1'b1;
         do begin
             @(posedge vif_mac.clk);
@@ -95,6 +97,7 @@ class driver_axis;
 
         vif_mac.dest    <= 48'h0;
         vif_mac.src     <= 48'h0;
+        vif_mac.ttype   <= 16'h0;
         vif_mac.vld     <= 1'b0;
     endtask
 

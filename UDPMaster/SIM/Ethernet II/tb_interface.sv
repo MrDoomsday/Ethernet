@@ -6,12 +6,13 @@
         );
 
         logic       [47:0]      dest, src;//dest - на какой MAC пойдет пакет, src - с какого MAC пакет будет отправлен
-        logic                       vld;
-        logic                       rdy;
+        logic       [15:0]      ttype;
+        logic                   vld;
+        logic                   rdy;
 
         SVA_CHECK_STABLE_HEADER: assert property (
             @(posedge clk) disable iff(!reset_n)
-            vld & ~rdy |-> ##1 $stable({dest, src, vld})
+            vld & ~rdy |-> ##1 $stable({dest, src, ttype, vld})
         ) else $error("SVA error: MAC header not stable for ready=0");
 
     endinterface: mac_intf

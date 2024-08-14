@@ -10,3 +10,5 @@
 *.out
 *.synctex.gz
 *.aux
+*.drawio.bkp
+*.bak

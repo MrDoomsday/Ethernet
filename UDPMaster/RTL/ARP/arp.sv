@@ -1,38 +1,38 @@
 /*
 	module for aligned packet  
 */
+module arp (
 
-module arp
-(
-
-	input clk,
-	input reset_n,
+	input 		logic 			clk,
+	input 		logic 			reset_n,
 
 
-	//avsi data
-	input  	logic [31:0]					avsi_data,
-	input  	logic  							avsi_valid,
-	output 	logic  							avsi_ready,
-	input  	logic  							avsi_sop,
-	input  	logic  							avsi_eop,
-	input  	logic [1:0] 					avsi_empty,
+//control singal
+    //source address - это адрес устройства (можно условно назвать его сетевой картой)
+    input       logic   [47:0]  cntrl_mac_src_i, 
+    input       logic   [31:0]  cntrl_ip_src_i,
+    input       logic   [15:0]  cntrl_port_src_i,
 
-
-	
-	input logic [47:0] coe_mac_source,
-	input logic [31:0] coe_ip_source,
-	input logic [15:0] coe_port_source,
-	
+//input packet
+    input       logic   [31:0]	arp_request_tdata_i,
+    input       logic           arp_request_tvld_i,
+    input       logic           arp_request_tlast_i,
+	input       logic   [3:0]   arp_request_tkeep_i, 
+    output      logic           arp_request_trdy_o,	
 	
 
-	//avso data		
-	output  	logic [31:0]		avso_data,
-	output  	logic  				avso_valid,
-	output  	logic  				avso_sop,
-	output  	logic  				avso_eop,
-	input 		logic  				avso_ready,
-	output  	logic [1:0] 		avso_empty
+//output packet
+	output 		logic 	[47:0]	arp_response_mac_dest_o,
+								arp_response_mac_src_o,
+	output 		logic 	[15:0]	arp_response_mac_type_o,
+	output 		logic 			arp_response_mac_vld_o,
+	input 		logic 			arp_response_mac_rdy_i,
 
+    output      logic   [31:0]  arp_response_tdata_o,
+    output      logic           arp_response_tvld_o,
+    output      logic           arp_response_tlast_o,
+    output      logic   [3:0]   arp_response_tkeep_o,
+    input       logic           arp_response_rdy_i
 
 );
 
@@ -42,23 +42,13 @@ module arp
 /*******************************************            DECLARATION      ***********************************************/
 /***********************************************************************************************************************/
 /***********************************************************************************************************************/
+	enum bit [5:0] {
+		SC_IDLE,
+		SC_CHECK[0:9],
+		SC_CHECK_TYPE,
+		SC_WAIT_ASWER
+	} state_check, state_check_next;//автомат для проверки входящего пакета на принадлежность к протоколу ARP
 
-	reg [47:0] mac_board;
-	reg [31:0] ip_board;
-	reg [15:0] port_board;
-
-	typedef struct packed 
-	{
-		logic [31:0] 	data;
-		logic 			valid;
-		logic 			sop;
-		logic 			eop;
-		logic [1:0] 	empty;
-	} stream;
-
-
-	stream stream_f [2:0];
-	reg [7:0] counter;
 	reg arp_ok;
 
 
@@ -69,7 +59,7 @@ module arp
 
 	reg [15:0] hardware_type_request, hardware_type_request_r;
 	reg [15:0] protocol_type_request, protocol_type_request_r;
-	reg [15:0] opcode_request, opcode_request;
+	reg [15:0] opcode_request, opcode_request_r;
 
 
 
@@ -80,28 +70,17 @@ module arp
 	reg [47:0] target_mac_address_request, target_mac_address_request_r;
 	reg [31:0] target_ip_address_request, target_ip_address_request_r;
 
-
-
-	enum bit [3:0] {
-		idle, 
-		send_0, 
-		send_1, 
-		send_2, 
-		send_3, 
-		send_4, 
-		send_5, 
-		send_6, 
-		send_7, 
-		send_8, 
-		send_9, 
-		send_10, 
-		send_11, 
-		send_12, 
-		send_13, 
-		send_14
-	} state, state_next;
-
-	bit fsm_busy;
+	logic word_vld;
+	logic fsm_send_busy;
+	
+	enum logic [3:0] {
+		RP_IDLE,
+		RP_SEND_MAC,
+		RP_SEND[0:6]
+	} state_resp, state_resp_next;
+	
+	logic resp_rdy;
+	logic resp_mac_rdy;
 
 /***********************************************************************************************************************/
 /***********************************************************************************************************************/
@@ -109,90 +88,202 @@ module arp
 /***********************************************************************************************************************/
 /***********************************************************************************************************************/
 
-	always_ff @ (posedge clk) begin
-		mac_board 	<= coe_mac_source;
-		ip_board 	<= coe_ip_source;
-		port_board 	<= coe_port_source;
+	always_ff @(posedge clk or negedge reset_n) begin
+		if(!reset_n) state_check <= SC_IDLE;
+		else state_check <= state_check_next;
 	end
 
-//cascade 0 
-	always_ff @ (posedge clk or negedge reset_n) begin
-		if(!reset_n) stream_f[0].valid <= 'h0;
-		else if(avsi_ready) stream_f[0].valid <= avsi_valid;
-	end
-
-	always_ff @ (posedge clk) begin
-		if(avsi_ready) begin
-			stream_f[0].data 	<= avsi_data;
-			stream_f[0].sop 	<= avsi_sop;
-			stream_f[0].eop 	<= avsi_eop;
-			stream_f[0].empty 	<= avsi_empty;
-		end
-	end
-
-	always_ff @ (posedge clk or negedge reset_n) begin
-		if(!reset_n) counter <= 'h0;
-		else if(avsi_ready && avsi_valid) begin
-			if(avsi_sop) counter <= 8'h0;
-			else counter <= counter + 1'b1;
-		end
-	end
-
-
-
-
+	
+	always_comb begin
+		state_check_next = state_check;
+		arp_request_trdy_o = 1'b1;
+		
+		case(state_check)
+			SC_IDLE: begin
+				if(arp_request_tvld_i) begin
+					if(arp_request_tlast_i) state_check_next = SC_IDLE;
+					else state_check_next = SC_CHECK0;
+				end
+			end
 			
-//cascade 1
+			SC_CHECK0: begin
+				if(arp_request_tvld_i) begin
+					if(arp_request_tlast_i) state_check_next = SC_IDLE;
+					else state_check_next = SC_CHECK1;
+				end			
+			end
+			
+			SC_CHECK1: begin
+				if(arp_request_tvld_i) begin
+					if(arp_request_tlast_i) state_check_next = SC_IDLE;
+					else state_check_next = SC_CHECK2;
+				end			
+			end
+			
+			SC_CHECK2: begin
+				if(arp_request_tvld_i) begin
+					if(arp_request_tlast_i) state_check_next = SC_IDLE;
+					else state_check_next = SC_CHECK3;
+				end
+			end
+			
+			SC_CHECK3: begin
+				if(arp_request_tvld_i) begin
+					if(arp_request_tlast_i) state_check_next = SC_IDLE;
+					else state_check_next = SC_CHECK4;
+				end			
+			end
+			
+			SC_CHECK4: begin
+				if(arp_request_tvld_i) begin
+					if(arp_request_tlast_i) state_check_next = SC_IDLE;
+					else state_check_next = SC_CHECK5;
+				end
+			end
+			
+			SC_CHECK5: begin
+				if(arp_request_tvld_i) begin
+					if(arp_request_tlast_i) state_check_next = SC_IDLE;
+					else state_check_next = SC_CHECK6;
+				end
+			end
+			
+			SC_CHECK6: begin
+				if(arp_request_tvld_i) begin
+					if(arp_request_tlast_i) state_check_next = SC_IDLE;
+					else state_check_next = SC_CHECK7;
+				end
+			end
+			
+			SC_CHECK7: begin
+				if(arp_request_tvld_i) begin
+					if(arp_request_tlast_i) state_check_next = SC_IDLE;
+					else state_check_next = SC_CHECK8;
+				end
+			end
+			
+			SC_CHECK8: begin
+				if(arp_request_tvld_i) begin
+					if(arp_request_tlast_i) state_check_next = SC_IDLE;
+					else state_check_next = SC_CHECK9;
+				end
+			end
+			
+			SC_CHECK9: begin
+				if(arp_request_tvld_i) begin
+					if(arp_request_tlast_i) state_check_next = SC_IDLE;
+					else state_check_next = SC_CHECK_TYPE;
+				end
+			end
+
+			SC_CHECK_TYPE: begin
+				arp_request_trdy_o = 1'b0;
+				if(arp_ok) begin
+					if(fsm_send_busy) 
+						state_check_next = SC_WAIT_ASWER;
+					else begin
+						if(arp_request_tvld_i) begin
+							arp_request_trdy_o = 1'b1;
+							if(arp_request_tlast_i) state_check_next = SC_IDLE;
+							else state_check_next = SC_CHECK0;
+						end
+						else begin
+							state_check_next = SC_IDLE;
+						end
+					end
+				end
+				else begin
+					state_check_next = SC_IDLE;
+				end
+			end
+			
+			SC_WAIT_ASWER: begin
+				if(!fsm_send_busy) state_check_next = SC_IDLE;
+			end
+			
+			default: state_check_next = SC_IDLE;
+		endcase
+	end
+
+	
+
 //register arp message 			
-always_ff @ (posedge clk) begin
-	if(avsi_ready && stream_f[0].valid) begin 
-		if(counter == 16'h0) mac_destination_request[47:16] 		<= stream_f[0].data[31:0];
-		if(counter == 16'h1) mac_destination_request[15:0] 			<= stream_f[0].data[31:16];
-		if(counter == 16'h1) mac_source_request[47:32] 				<= stream_f[0].data[15:0];
-		if(counter == 16'h2) mac_source_request[31:0] 				<= stream_f[0].data[31:0];		
-		if(counter == 16'h3) mac_type_packet_request 				<= stream_f[0].data[31:16];			
-		if(counter == 16'h3) hardware_type_request 					<= stream_f[0].data[15:0];
-		if(counter == 16'h3) protocol_type_request 					<= stream_f[0].data[31:16];
-		if(counter == 16'h4) hardware_size_protocol_size_request 	<= stream_f[0].data[15:0];
-		if(counter == 16'h5) opcode_request 						<= stream_f[0].data[31:16];
-		if(counter == 16'h5) sender_mac_address_request[47:32] 		<= stream_f[0].data[15:0];
-		if(counter == 16'h6) sender_mac_address_request[31:0] 		<= stream_f[0].data[31:0];
-		if(counter == 16'h7) sender_ip_address_request[31:0] 		<= stream_f[0].data[31:0];
-		if(counter == 16'h8) target_mac_address_request[47:16] 		<= stream_f[0].data[31:0];
-		if(counter == 16'h9) target_mac_address_request[15:0] 		<= stream_f[0].data[31:16];
-		if(counter == 16'h9) target_ip_address_request[31:16] 		<= stream_f[0].data[15:0];
-		if(counter == 16'hA) target_ip_address_request[15:0] 		<= stream_f[0].data[31:16];
-	end 
-end	
+	always_ff @(posedge clk) begin
+		if(arp_request_trdy_o && arp_request_tvld_i) begin 
+			if(state_check == SC_IDLE) begin
+				mac_destination_request[47:16] <= arp_request_tdata_i[31:0];
+			end
 
-always_ff @ (posedge clk or negedge reset_n) begin
-	if(!reset_n) stream_f[1] <= 'h0;
-	else if(avsi_ready) stream_f[1] <= stream_f[0];
-end
+			if(state_check == SC_CHECK0) begin 
+				mac_destination_request[15:0] <= arp_request_tdata_i[31:16];
+				mac_source_request[47:32] <= arp_request_tdata_i[15:0];
+			end
 
-				
-assign arp_ok = 	stream_f[1].valid & stream_f[1].eop &	
-					((mac_destination_request == 48'hFFFFFFFFFFFF) | (mac_destination_request == mac_board)) & 
+			if(state_check == SC_CHECK1) begin
+				mac_source_request[31:0] 	<= arp_request_tdata_i[31:0];
+			end
+
+			if(state_check == SC_CHECK2) begin
+				mac_type_packet_request		<= arp_request_tdata_i[31:16];			
+				hardware_type_request		<= arp_request_tdata_i[15:0];
+			end
+
+			if(state_check == SC_CHECK3) begin
+				protocol_type_request				<= arp_request_tdata_i[31:16];
+				hardware_size_protocol_size_request	<= arp_request_tdata_i[15:0];
+			end
+
+			if(state_check == SC_CHECK4) begin
+				opcode_request	<= arp_request_tdata_i[31:16];
+			end
+
+			if(state_check == SC_CHECK4) begin
+				sender_mac_address_request[47:32]	<= arp_request_tdata_i[15:0];
+			end
+
+			if(state_check == SC_CHECK5) begin
+				sender_mac_address_request[31:0] <= arp_request_tdata_i[31:0];
+			end
+
+			if(state_check == SC_CHECK6) begin
+				sender_ip_address_request[31:0] <= arp_request_tdata_i[31:0];
+			end
+
+			if(state_check == SC_CHECK7) begin
+				target_mac_address_request[47:16] <= arp_request_tdata_i[31:0];
+			end
+
+			if(state_check == SC_CHECK8) begin
+				target_mac_address_request[15:0] <= arp_request_tdata_i[31:16];
+				target_ip_address_request[31:16] <= arp_request_tdata_i[15:0];
+			end
+
+			if(state_check == SC_CHECK9) begin
+				target_ip_address_request[15:0] <= arp_request_tdata_i[31:16];
+			end
+		end 
+	end	
+
+
+	assign arp_ok = ((mac_destination_request == 48'hFFFFFFFFFFFF) | (mac_destination_request == cntrl_mac_src_i)) & 
 					(mac_type_packet_request == 16'h0806) & 
 					(hardware_type_request == 16'h0001) & 
 					(protocol_type_request == 16'h0800) & 
 					(hardware_size_protocol_size_request == {8'h06, 8'h04}) & 
 					(opcode_request == 16'h0001) & 
 					//((target_mac_address_request == 47'h0) | (target_mac_address_request == coe_mac_source) & //возможно и не потребуется 
-					(target_ip_address_request == ip_board);
-						
-//фиксация полей пакета ARP в регистрах
-	always_ff @ (posedge clk) begin
-		if(fsm_busy) fsm_busy <= (state == state10) & avso_ready ? 1'b0 : 1'b1;
-		else fsm_busy <= arp_ok & (state == idle);
+					(target_ip_address_request == cntrl_ip_src_i);
 
-		if(arp_ok && !fsm_busy) begin
+
+//фиксация полей пакета ARP в регистрах - для освобождения автомата по анализу входящих пакетов
+	always_ff @(posedge clk) begin
+		if(arp_ok && (state_check == SC_CHECK_TYPE || state_check == SC_WAIT_ASWER) && !fsm_send_busy) begin
 			mac_destination_request_r 				<= mac_destination_request;
 			mac_source_request_r 					<= mac_source_request;
 			mac_type_packet_request_r 				<= mac_type_packet_request;
 			hardware_type_request_r 				<= hardware_type_request;
 			protocol_type_request_r 				<= protocol_type_request;
-			opcode_request 							<= opcode_request;
+			opcode_request_r 						<= opcode_request;
 			hardware_size_protocol_size_request_r 	<= hardware_size_protocol_size_request;
 			sender_mac_address_request_r 			<= sender_mac_address_request;
 			sender_ip_address_request_r 			<= sender_ip_address_request;
@@ -202,116 +293,141 @@ assign arp_ok = 	stream_f[1].valid & stream_f[1].eop &
 	end
 
 /*
-	Далее идет кончный автомат, который осуществляет последовательную отправку 
+	Далее конечный автомат, который осуществляет последовательную отправку 
 	ответов на ARP-запрос
 */
-assign avsi_ready = ~(arp_ok & fsm_busy);
 
-always_ff @ (posedge clk or negedge reset_n) begin
-	if(!reset_n) state <= idle;
-	else state <= state_next;
-end		
+	always_ff @(posedge clk or negedge reset_n) begin
+		if(!reset_n) state_resp <= RP_IDLE;
+		else state_resp <= state_resp_next;
+	end		
+
+
+	always_comb begin
+		state_resp_next = state_resp;
+		fsm_send_busy = 1'b1;
 		
-		
-always_comb begin
-	case(state)
-		idle:		if(arp_ok)		state_next = send_0;
-					else 			state_next = idle;
-						
-		send_0:		if(avso_ready)	state_next = send_1;
-					else 			state_next = send_0;
-						
-						
-		send_1:		if(avso_ready)	state_next = send_2;
-					else 			state_next = send_1;
-						
-		send_2:		if(avso_ready)	state_next = send_3;
-					else 			state_next = send_2;
-						
-		send_3:		if(avso_ready)	state_next = send_4;
-					else 			state_next = send_3;
-						
-		send_4:		if(avso_ready)	state_next = send_5;
-					else 			state_next = send_4;
-						
-		send_5:		if(avso_ready)	state_next = send_6;
-					else 			state_next = send_5;
-						
-		send_6:		if(avso_ready)	state_next = send_7;
-					else 			state_next = send_6;
-						
-		send_7:		if(avso_ready)	state_next = send_8;
-					else 			state_next = send_7;
-						
-		send_8:		if(avso_ready)	state_next = send_9;
-					else 			state_next = send_8;
-						
-		send_9:		if(avso_ready)	state_next = send_10;
-					else 			state_next = send_9;
-						
-		send_10:	if(avso_ready)	state_next = idle;
-					else 			state_next = send_10;
-						
-		default:					state_next = idle;
-	endcase 
-end
+		case(state_resp)
+			RP_IDLE: begin
+				fsm_send_busy = 1'b0;
+				if(arp_ok) state_resp_next = RP_SEND_MAC;
+				else state_resp_next = RP_IDLE;
+			end
 
-
+			RP_SEND_MAC: begin
+				if(resp_mac_rdy) begin
+					state_resp_next = RP_SEND0;
+				end
+			end
+			
+			RP_SEND0: begin 
+				if(resp_rdy) state_resp_next = RP_SEND1;
+				else state_resp_next = RP_SEND0;
+			end	
+							
+			RP_SEND1: begin
+				if(resp_rdy) state_resp_next = RP_SEND2;
+				else state_resp_next = RP_SEND1;
+			end
+			
+			RP_SEND2: begin
+				if(resp_rdy) state_resp_next = RP_SEND3;
+				else state_resp_next = RP_SEND2;
+			end
+			
+			RP_SEND3: begin
+				if(resp_rdy) state_resp_next = RP_SEND4;
+				else state_resp_next = RP_SEND3;
+			end
+			
+			RP_SEND4: begin
+				if(resp_rdy) state_resp_next = RP_SEND5;
+				else state_resp_next = RP_SEND4;
+			end
+			
+			RP_SEND5: begin
+				if(resp_rdy) state_resp_next = RP_SEND6;
+				else state_resp_next = RP_SEND5;
+			end
 				
-	
-always_ff @ (posedge clk or negedge reset_n)
-	if(!reset_n) avso_valid <= 1'h0;
-	else if(avso_ready) begin
-		case(state)
-			send_0,		
-			send_1,
-			send_2,
-			send_3,
-			send_4,
-			send_5,
-			send_6,
-			send_7,
-			send_8,
-			send_9,
-			send_10:		avso_valid <= 1'h1;
-			default:		avso_valid <= 1'h0;
+			RP_SEND6: begin
+				if(resp_rdy) state_resp_next = RP_IDLE;
+				else state_resp_next = RP_SEND6;
+			end
+			
+			
+			default: state_resp_next = RP_IDLE;
 		endcase 
 	end
-	
-				
-always_ff @ (posedge clk) begin
-	if(avso_ready) begin
-		avso_data <= 32'h0;
-		avso_sop <= 1'h0;
-		avso_eop <= 1'h0;
 
-		case(state)
-			send_0:	begin
-				avso_data <= mac_source_request_r[47:16];
-				avso_sop <= 1'b1;
-			end
-			send_1:	avso_data <= {mac_source_request_r[15:0], mac_board[47:32]};
-			send_2:	avso_data <= mac_board[31:0];
-			send_3:	avso_data <= {16'h0806, 16'h0001};
-			send_4:	avso_data <= {16'h0800, 16'h0604};
-			send_5:	avso_data <= {16'h0002, mac_board[47:32]};
-			send_6:	avso_data <= mac_board[31:0];
-			send_7:	avso_data <= ip_board[31:0];
-			send_8:	avso_data <= sender_mac_address_request_r[47:16];
-			send_9:	avso_data <= {sender_mac_address_request_r[15:0], sender_ip_address_request_r[31:16]};
-			send_10: begin
-				avso_data <= {sender_ip_address_request_r[15:0], 16'h0};
-				avso_eop <= 1'b1;
-			end
-			default: begin
-				avso_data <= 32'h0;
-				avso_sop <= 1'b0;
-				avso_eop <= 1'b0;
-			end
-		endcase 				
+//send mac address
+	assign resp_mac_rdy = arp_response_mac_vld_o & ~arp_response_mac_rdy_i ? 1'b0 : 1'b1;
+	
+	always_ff @(posedge clk or negedge reset_n) begin
+		if(!reset_n) begin
+			arp_response_mac_vld_o <= 1'b0;
+		end
+		else if(resp_mac_rdy) begin
+			arp_response_mac_vld_o <= (state_resp == RP_SEND_MAC);
+		end
 	end
-end			
 
-assign avso_empty = 2'b00;
+	always_ff @ (posedge clk) begin
+		if(resp_mac_rdy) begin
+			arp_response_mac_dest_o <= mac_source_request_r;
+			arp_response_mac_src_o 	<= cntrl_mac_src_i;
+			arp_response_mac_type_o <= 16'h0806;
+		end
+	end
+
+
+//send payload
+	always_ff @(posedge clk or negedge reset_n) begin
+		if(!reset_n) arp_response_tvld_o <= 1'h0;
+		else if(resp_rdy) begin
+			case(state_resp)
+				RP_SEND0,		
+				RP_SEND1,
+				RP_SEND2,
+				RP_SEND3,
+				RP_SEND4,
+				RP_SEND5,
+				RP_SEND6:		arp_response_tvld_o <= 1'h1;
+				default:		arp_response_tvld_o <= 1'h0;
+			endcase 
+		end
+	end
+				
+	always_ff @(posedge clk) begin
+		if(resp_rdy) begin
+			arp_response_tdata_o <= 32'h0;
+			arp_response_tlast_o <= 1'h0;
+			arp_response_tkeep_o <= 4'b1111;
+
+			case(state_resp)
+				RP_IDLE: 	arp_response_tkeep_o <= 4'b0000;
+				RP_SEND0: 	arp_response_tdata_o <= {16'h0001, 16'h0800};
+				RP_SEND1: 	arp_response_tdata_o <= {16'h0604, 16'h0002};
+				RP_SEND2: 	arp_response_tdata_o <= cntrl_mac_src_i[47:16];
+				RP_SEND3: 	arp_response_tdata_o <= {cntrl_mac_src_i[15:0], cntrl_ip_src_i[31:16]};
+				RP_SEND4: 	arp_response_tdata_o <= {cntrl_ip_src_i[15:0], sender_mac_address_request_r[47:32]};
+				RP_SEND5: 	arp_response_tdata_o <= sender_mac_address_request_r[31:0];
+				RP_SEND6: begin
+					arp_response_tdata_o <= sender_ip_address_request_r[31:0];
+					arp_response_tlast_o <= 1'b1;
+				end
+
+				default: begin
+					arp_response_tdata_o <= 32'h0;
+					arp_response_tlast_o <= 1'b0;
+					arp_response_tkeep_o <= 4'b0000;
+				end
+			endcase 				
+		end
+	end
 	
+	assign resp_rdy = arp_response_tvld_o & ~arp_response_rdy_i ? 1'b0 : 1'b1;
+
+
+
 endmodule 

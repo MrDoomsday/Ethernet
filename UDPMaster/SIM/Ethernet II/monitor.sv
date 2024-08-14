@@ -24,6 +24,7 @@ class monitor_mac;
         if(vif_mac.vld && vif_mac.rdy) begin
             mp.dest = vif_mac.dest;
             mp.src = vif_mac.src;
+            mp.ttype = vif_mac.ttype;
             mbx_mon2scb.put(mp);
         end
     endtask

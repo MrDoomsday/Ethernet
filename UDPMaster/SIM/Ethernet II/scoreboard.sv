@@ -59,8 +59,8 @@ class scoreboard;
         end        
 
         //check type payload Ethernet II packet
-        if(p_out.data[3][31:16] != 16'h0800) begin
-            $error("Error type payload, out = %0h, in = %0h", p_out.data[3][31:16], 16'h0800);
+        if(p_out.data[3][31:16] != p_mac.ttype) begin
+            $error("Error type payload, out = %0h, in = %0h", p_out.data[3][31:16], p_mac.ttype);
             cnt_error_transaction++;            
         end        
 

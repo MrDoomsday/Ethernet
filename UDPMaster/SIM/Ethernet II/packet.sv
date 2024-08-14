@@ -3,11 +3,12 @@ class mac_packet;
 
     rand    bit     [47:0]      dest;
     rand    bit     [47:0]      src;//dest - на какой MAC пойдет пакет, src - с какого MAC пакет будет отправлен
-
+    rand    bit     [15:0]      ttype;
 
     constraint c_mac_fields {
         dest > 0;
         src > 0;
+        ttype > 0;
     }
 
 endclass

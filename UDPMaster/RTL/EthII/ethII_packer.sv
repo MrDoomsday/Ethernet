@@ -2,9 +2,9 @@ module ethII_packer (
     input       logic clk,
     input       logic reset_n,
 
-    //заголовок идет синхронно с пакетом (при приеме первого слова заголовок уже выставлен)
     input       logic   [47:0]  hdr_mac_dest_i, 
-                                hdr_mac_src_i,//dest - на какой IP пойдет пакет, src - с какого IP пакет будет отправлен
+                                hdr_mac_src_i,
+    input       logic   [15:0]  hdr_mac_type_i,
     input       logic           hdr_mac_vld_i,
     output      logic           hdr_mac_rdy_o,
 
@@ -39,6 +39,7 @@ module ethII_packer (
     } state, state_next;
 
     logic   [47:0]  mac_dst_reg, mac_src_reg;
+    logic   [15:0]  mac_type_reg;
     logic           mac_save_reg;
     logic   [31:0]  user_data_save;
     logic   [3:0]   user_keep_save;//требуется для правильного завершения пакета
@@ -137,6 +138,7 @@ module ethII_packer (
         if(mac_save_reg) begin
             mac_dst_reg <= hdr_mac_dest_i;
             mac_src_reg <= hdr_mac_src_i;
+            mac_type_reg <= hdr_mac_type_i;
         end
 
         if(((state == SEND_ETH_TYPE) || (state == SEND_DATA)) && user_tvld_i && rdy) begin
@@ -190,7 +192,7 @@ module ethII_packer (
                     ethii_ip_udp_tdata_o <= mac_src_reg[31:0];
                 end
                 SEND_ETH_TYPE: begin
-                    ethii_ip_udp_tdata_o <= {16'h0800, user_tdata_i[31:16]};//type=16'h0800 - IPv4
+                    ethii_ip_udp_tdata_o <= {mac_type_reg, user_tdata_i[31:16]};//type=16'h0800 - IPv4
                 end
                 SEND_DATA: begin
                     ethii_ip_udp_tdata_o <= {user_data_save[15:0], user_tdata_i[31:16]};
