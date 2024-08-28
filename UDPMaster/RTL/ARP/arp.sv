@@ -46,7 +46,7 @@ module arp (
 		SC_IDLE,
 		SC_CHECK[0:9],
 		SC_CHECK_TYPE,
-		SC_WAIT_ASWER
+		SC_WAIT_ANSWER
 	} state_check, state_check_next;//автомат для проверки входящего пакета на принадлежность к протоколу ARP
 
 	reg arp_ok;
@@ -171,8 +171,8 @@ module arp (
 			
 			SC_CHECK9: begin
 				if(arp_request_tvld_i) begin
-					if(arp_request_tlast_i) state_check_next = SC_IDLE;
-					else state_check_next = SC_CHECK_TYPE;
+					/*if(arp_request_tlast_i) state_check_next = SC_IDLE;//состояние пока под вопросом
+					else */state_check_next = SC_CHECK_TYPE;
 				end
 			end
 
@@ -180,7 +180,7 @@ module arp (
 				arp_request_trdy_o = 1'b0;
 				if(arp_ok) begin
 					if(fsm_send_busy) 
-						state_check_next = SC_WAIT_ASWER;
+						state_check_next = SC_WAIT_ANSWER;
 					else begin
 						if(arp_request_tvld_i) begin
 							arp_request_trdy_o = 1'b1;
@@ -197,7 +197,7 @@ module arp (
 				end
 			end
 			
-			SC_WAIT_ASWER: begin
+			SC_WAIT_ANSWER: begin
 				if(!fsm_send_busy) state_check_next = SC_IDLE;
 			end
 			
@@ -265,7 +265,8 @@ module arp (
 	end	
 
 
-	assign arp_ok = ((mac_destination_request == 48'hFFFFFFFFFFFF) | (mac_destination_request == cntrl_mac_src_i)) & 
+	assign arp_ok = (state_check == SC_CHECK_TYPE | state_check == SC_WAIT_ANSWER) & 
+					((mac_destination_request == 48'hFFFFFFFFFFFF) | (mac_destination_request == cntrl_mac_src_i)) & 
 					(mac_type_packet_request == 16'h0806) & 
 					(hardware_type_request == 16'h0001) & 
 					(protocol_type_request == 16'h0800) & 
@@ -277,7 +278,7 @@ module arp (
 
 //фиксация полей пакета ARP в регистрах - для освобождения автомата по анализу входящих пакетов
 	always_ff @(posedge clk) begin
-		if(arp_ok && (state_check == SC_CHECK_TYPE || state_check == SC_WAIT_ASWER) && !fsm_send_busy) begin
+		if(arp_ok && (state_check == SC_CHECK_TYPE || state_check == SC_WAIT_ANSWER) && !fsm_send_busy) begin
 			mac_destination_request_r 				<= mac_destination_request;
 			mac_source_request_r 					<= mac_source_request;
 			mac_type_packet_request_r 				<= mac_type_packet_request;

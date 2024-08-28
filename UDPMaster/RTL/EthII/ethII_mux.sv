@@ -82,8 +82,6 @@ module ethII_mux (
         ipv4_mac_rdy_o = ~ipv4_mac_vld_i;
         ipv4_trdy_o = ~ipv4_tvld_i;
 
-
-
         case(state)
             IDLE: begin
                 if(arp_mac_vld_i) begin
@@ -156,12 +154,12 @@ module ethII_mux (
             hdr_mac_type_o  <= 16'h0;
 
             case(state)
-                SEND_PLD_IPV4: begin
+                SEND_MAC_IPV4: begin
                     hdr_mac_dest_o  <= ipv4_mac_dest_i;
                     hdr_mac_src_o   <= ipv4_mac_src_i;
                     hdr_mac_type_o  <= ipv4_mac_type_i;
                 end
-                SEND_PLD_ARP: begin
+                SEND_MAC_ARP: begin
                     hdr_mac_dest_o  <= arp_mac_dest_i;
                     hdr_mac_src_o   <= arp_mac_src_i;
                     hdr_mac_type_o  <= arp_mac_type_i;
@@ -183,9 +181,9 @@ module ethII_mux (
         else if(pld_rdy) begin
             user_tvld_o <= 1'b0;
             case(state)
-                SEND_MAC_IPV4: user_tvld_o  <= ipv4_tvld_i;
-                SEND_MAC_ARP: user_tvld_o   <= arp_tvld_i;
-                default: user_tvld_o        <= 1'b0;
+                SEND_PLD_IPV4:  user_tvld_o     <= ipv4_tvld_i;
+                SEND_PLD_ARP:   user_tvld_o     <= arp_tvld_i;
+                default:        user_tvld_o     <= 1'b0;
             endcase 
         end
     end

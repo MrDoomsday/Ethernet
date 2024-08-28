@@ -2,21 +2,21 @@ module axis_fifo #(
     parameter T_DATA_WIDTH = 32,
     parameter SIZE = 10
 )(
-    input bit clk,
-    input bit reset_n,
+    input logic clk,
+    input logic reset_n,
 
     //input stream
-    input   bit   [T_DATA_WIDTH-1:0]        s_data_i,
-    input   bit                             s_valid_i,
-    output  bit                             s_ready_o,
+    input   logic   [T_DATA_WIDTH-1:0]        s_data_i,
+    input   logic                             s_valid_i,
+    output  logic                             s_ready_o,
 
     //output stream
-    output  bit   [T_DATA_WIDTH-1:0]        m_data_o,
-    output  bit                             m_valid_o,
-    input   bit                             m_ready_i,
+    output  logic   [T_DATA_WIDTH-1:0]        m_data_o,
+    output  logic                             m_valid_o,
+    input   logic                             m_ready_i,
 
-    output  bit                             fifo_empty_o,
-    output  bit                             fifo_full_o
+    output  logic                             fifo_empty_o,
+    output  logic                             fifo_full_o
 );
 
 /***********************************************************************************************************************/

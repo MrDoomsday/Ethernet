@@ -51,7 +51,8 @@ module mux_ipudp (
                                 mux_hdr_ip_src_o,
     output      logic   [15:0]  mux_hdr_port_dest_o, 
                                 mux_hdr_port_src_o,
-
+    output      logic           mux_tvld_hdr_vld_o,
+    
     output      logic   [31:0]  mux_tdata_o,
     output      logic           mux_tvld_o,
     output      logic           mux_tlast_o,
@@ -76,6 +77,7 @@ module mux_ipudp (
 
 
     wire ready;
+    logic sd_tlast_old, au_tlast_old, us_tlast_old;
 
 /***********************************************************************************************************************/
 /***********************************************************************************************************************/
@@ -84,7 +86,7 @@ module mux_ipudp (
 /***********************************************************************************************************************/
 
     always_ff @ (posedge clk or negedge reset_n) begin
-        if(!reset_n) state <= CH_SD;
+        if(!reset_n) state <= IDLE;
         else state <= state_next;
     end
 
@@ -143,21 +145,55 @@ module mux_ipudp (
 
 
     assign ready = ~mux_trdy_i & mux_tvld_o ? 1'b0 : 1'b1;
+    
+    always_ff @(posedge clk or negedge reset_n) begin
+        if(!reset_n) begin
+            sd_tlast_old <= 1'b1;
+            au_tlast_old <= 1'b1;
+            us_tlast_old <= 1'b1;
+        end
+        else begin
+            if(sd_trdy_o && sd_tvld_i) begin
+                sd_tlast_old <= sd_tlast_i;
+            end
 
+            if(au_trdy_o && au_tvld_i) begin
+                au_tlast_old <= au_tlast_i;    
+            end
+
+            if(us_trdy_o && us_tvld_i) begin
+                us_tlast_old <= us_tlast_i;
+            end
+        end 
+    end
 
 
 //выходной каскад
     always_ff @(posedge clk or negedge reset_n) begin
         if(!reset_n) begin
             mux_tvld_o <= 1'b0;
+            mux_tvld_hdr_vld_o <= 1'b0;
         end
         else if(ready) begin
+            mux_tvld_hdr_vld_o <= 1'b0;
             mux_tvld_o <= 1'b0;
             case(state)
-                CH_SD:  mux_tvld_o <= sd_tvld_i;
-                CH_AU:  mux_tvld_o <= au_tvld_i;
-                CH_US:  mux_tvld_o <= us_tvld_i;
-                default: mux_tvld_o <= 1'b0;
+                CH_SD:  begin
+                    mux_tvld_o <= sd_tvld_i;
+                    mux_tvld_hdr_vld_o <= sd_tvld_i & sd_tlast_old;
+                end
+                CH_AU:  begin
+                    mux_tvld_o <= au_tvld_i;
+                    mux_tvld_hdr_vld_o <= au_tvld_i & au_tlast_old;
+                end
+                CH_US:  begin
+                    mux_tvld_o <= us_tvld_i;
+                    mux_tvld_hdr_vld_o <= us_tvld_i & us_tlast_old;
+                end
+                default: begin
+                    mux_tvld_o <= 1'b0;
+                    mux_tvld_hdr_vld_o <= 1'b0;
+                end
             endcase
         end
     end
@@ -166,8 +202,8 @@ module mux_ipudp (
 
     always_ff @(posedge clk) begin
         if(ready) begin
-            mux_hdr_mac_dest_o  <= 32'h0;
-            mux_hdr_mac_src_o   <= 32'h0;
+            mux_hdr_mac_dest_o  <= 48'h0;
+            mux_hdr_mac_src_o   <= 48'h0;
             mux_hdr_ip_dest_o   <= 32'h0;
             mux_hdr_ip_src_o    <= 32'h0;
             mux_hdr_port_dest_o <= 16'h0;
@@ -218,8 +254,8 @@ module mux_ipudp (
                 end
 
                 default: begin
-                    mux_hdr_mac_dest_o  <= 32'h0;
-                    mux_hdr_mac_src_o   <= 32'h0;
+                    mux_hdr_mac_dest_o  <= 48'h0;
+                    mux_hdr_mac_src_o   <= 48'h0;
                     mux_hdr_ip_dest_o   <= 32'h0;
                     mux_hdr_ip_src_o    <= 32'h0;
                     mux_hdr_port_dest_o <= 16'h0;

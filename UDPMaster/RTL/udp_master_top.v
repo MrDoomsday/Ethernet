@@ -1,20 +1,24 @@
 module udp_master_top #(
-    parameter SERIAL_NUMBER = 32'h14082024,
-    parameter LOCKED_SN = 1,//блокировка изменения серийного номера ядра
-    parameter LOCKED_WCODE = 1,//блокировка изменения идентификаторов для записи по регистрам
-    parameter LOCKED_RCODE = 1,//блоктровка изменения идентификаторов для чтения по регистрам
-
     parameter UID_WIDTH = 10,//ширина порта канала
     parameter FIFO_SIZE_DATA = 10,
     parameter FIFO_SIZE_HDR = 10,
     parameter FIFO_SIZE_MAC = 10,
 
-    // Width of data bus in bits
-    parameter DATA_WIDTH = 32,
-    // Width of address bus in bits
-    parameter ADDR_WIDTH = 32,
-    // Width of wstrb (width of data bus in words)
-    parameter STRB_WIDTH = (DATA_WIDTH/8)
+    parameter [47:0] MAC_BOARD_DEFAULT = 48'h012345678901,
+    parameter [31:0] IP_BOARD_DEFAULT = 32'h12345678,
+    parameter [15:0] PORT_BOARD_DEFAULT = 16'h1234,
+
+    parameter LOCKED_SN = 1,//блокировка изменения серийного номера ядра
+    parameter LOCKED_WCODE = 1,//блокировка изменения идентификаторов для записи по регистрам
+    parameter LOCKED_RCODE = 1,//блокировка изменения идентификаторов для чтения по регистрам
+
+
+    parameter [31:0] SERIAL_NUMBER = 32'h12345678,
+    parameter [31:0] WRANDCODE_DEFAULT = 32'h12345678,
+    parameter [31:0] WBURSTCODE_DEFAULT = 32'h12345678,
+    parameter [31:0] RRANDCODE_DEFAULT = 32'h12345678,
+    parameter [31:0] RBURSTCODE_DEFAULT = 32'h12345678
+
 )(
     input       wire                        clk,
     input       wire                        reset_n,
@@ -52,7 +56,7 @@ module udp_master_top #(
 
 
     //AXI-4 for access external registers
-    output      wire    [ADDR_WIDTH-1:0]    m_axi_awaddr,
+    output      wire    [63:0]              m_axi_awaddr,
     output      wire    [7:0]               m_axi_awlen,
     output      wire    [2:0]               m_axi_awsize,
     output      wire    [1:0]               m_axi_awburst,
@@ -60,11 +64,11 @@ module udp_master_top #(
     output      wire    [3:0]               m_axi_awcache,
     output      wire    [2:0]               m_axi_awprot,
     output      wire    [3:0]               m_axi_awqos,
-    output      wire    [3:0]               m_axi_awwireion,
+    output      wire    [3:0]               m_axi_awregion,
     output      wire                        m_axi_awvalid,
     input       wire                        m_axi_awready,
-    output      wire    [DATA_WIDTH-1:0]    m_axi_wdata,
-    output      wire    [STRB_WIDTH-1:0]    m_axi_wstrb,
+    output      wire    [31:0]              m_axi_wdata,
+    output      wire    [3:0]               m_axi_wstrb,
     output      wire                        m_axi_wlast,
     output      wire                        m_axi_wvalid,
     input       wire                        m_axi_wready,
@@ -72,7 +76,7 @@ module udp_master_top #(
     input       wire                        m_axi_bvalid,
     output      wire                        m_axi_bready,
 
-    output      wire    [ADDR_WIDTH-1:0]    m_axi_araddr,
+    output      wire    [63:0]              m_axi_araddr,
     output      wire    [7:0]               m_axi_arlen,
     output      wire    [2:0]               m_axi_arsize,
     output      wire    [1:0]               m_axi_arburst,
@@ -80,10 +84,10 @@ module udp_master_top #(
     output      wire    [3:0]               m_axi_arcache,
     output      wire    [2:0]               m_axi_arprot,
     output      wire    [3:0]               m_axi_arqos,
-    output      wire    [3:0]               m_axi_arwireion,
+    output      wire    [3:0]               m_axi_arregion,
     output      wire                        m_axi_arvalid,
     input       wire                        m_axi_arready,
-    input       wire    [DATA_WIDTH-1:0]    m_axi_rdata,
+    input       wire    [31:0]              m_axi_rdata,
     input       wire    [1:0]               m_axi_rresp,
     input       wire                        m_axi_rlast,
     input       wire                        m_axi_rvalid,
@@ -162,11 +166,13 @@ module udp_master_top #(
     wire    [47:0]      mux_hdr_mac_dest, mux_hdr_mac_src;
     wire    [31:0]      mux_hdr_ip_dest, mux_hdr_ip_src;
     wire    [15:0]      mux_hdr_port_dest, mux_hdr_port_src;
+    wire                mux_tvld_hdr_vld;
     wire    [31:0]      mux_tdata;
     wire                mux_tvld;
     wire                mux_tlast;
     wire    [3:0]       mux_tkeep;
     wire                mux_trdy;
+    wire                ipudp_tready;
 
 //packet IP/UDP
     wire    [31:0]      ip_udp_tdata;
@@ -176,7 +182,6 @@ module udp_master_top #(
     wire                ip_udp_rdy;
 
 //for fifo MAC addresses
-    wire                mac_ip_udp_ready;
     wire    [95:0]      in_mac_fifo_tdata, out_mac_fifo_tdata;
     wire                in_mac_fifo_tvalid, out_mac_fifo_tvalid;
     wire                in_mac_fifo_tready, out_mac_fifo_tready;
@@ -221,10 +226,19 @@ module udp_master_top #(
 
 
     axil2reg #(
-        .SERIAL_NUMBER  (SERIAL_NUMBER),
-        .LOCKED_SN      (LOCKED_SN),
-        .LOCKED_WCODE   (LOCKED_WCODE),
-        .LOCKED_RCODE   (LOCKED_RCODE)
+        .MAC_BOARD_DEFAULT  (MAC_BOARD_DEFAULT),
+        .IP_BOARD_DEFAULT   (IP_BOARD_DEFAULT),
+        .PORT_BOARD_DEFAULT (PORT_BOARD_DEFAULT),
+
+        .SERIAL_NUMBER      (SERIAL_NUMBER),
+        .WRANDCODE_DEFAULT  (WRANDCODE_DEFAULT),
+        .WBURSTCODE_DEFAULT (WBURSTCODE_DEFAULT),
+        .RRANDCODE_DEFAULT  (RRANDCODE_DEFAULT),
+        .RBURSTCODE_DEFAULT (RBURSTCODE_DEFAULT),
+        
+        .LOCKED_SN          (LOCKED_SN),
+        .LOCKED_WCODE       (LOCKED_WCODE),
+        .LOCKED_RCODE       (LOCKED_RCODE)
     ) axil2reg_inst (
         .clk                        (clk),
         .reset_n                    (reset_n),
@@ -255,7 +269,7 @@ module udp_master_top #(
         //src parameter
         .cntrl_mac_src_o            (cntrl_mac_src_board),
         .cntrl_ip_src_o             (cntrl_ip_src_board),
-        .cntrl_port_o               (cntrl_port_src_board),
+        .cntrl_port_src_o           (cntrl_port_src_board),
         //dst parameter
         .cntrl_addr_cell_dest_o     (cntrl_addr_cell_dest),//адрес текущей ячейки с адресами назначения конкретного канала
         .cntrl_mac_dest_o           (cntrl_mac_dest),
@@ -385,6 +399,7 @@ module udp_master_top #(
         .mux_hdr_ip_src_o       (mux_hdr_ip_src),
         .mux_hdr_port_dest_o    (mux_hdr_port_dest),
         .mux_hdr_port_src_o     (mux_hdr_port_src),
+        .mux_tvld_hdr_vld_o     (mux_tvld_hdr_vld),
         .mux_tdata_o            (mux_tdata),
         .mux_tvld_o             (mux_tvld),
         .mux_tlast_o            (mux_tlast),
@@ -408,10 +423,10 @@ module udp_master_top #(
         .hdr_port_src_i     (mux_hdr_port_src),
     
         .user_tdata_i       (mux_tdata),
-        .user_tvld_i        (mux_tvld & mac_ip_udp_ready),
+        .user_tvld_i        (mux_tvld & mux_trdy),
         .user_tlast_i       (mux_tlast),
         .user_tkeep_i       (mux_tkeep), 
-        .user_trdy_o        (mux_trdy),
+        .user_trdy_o        (ipudp_tready),
     
     
         .ip_udp_tdata_o     (ip_udp_tdata),
@@ -430,7 +445,7 @@ module udp_master_top #(
         .reset_n    (reset_n),
 
         .s_data_i   (in_mac_fifo_tdata),
-        .s_valid_i  (in_mac_fifo_tvalid & mac_ip_udp_ready),
+        .s_valid_i  (in_mac_fifo_tvalid & mux_trdy),
         .s_ready_o  (in_mac_fifo_tready),
         
         .m_data_o   (out_mac_fifo_tdata),
@@ -508,8 +523,9 @@ module udp_master_top #(
 /***********************************************************************************************************************/
 /***********************************************************************************************************************/
 
-    assign mac_ip_udp_ready = mux_trdy & in_mac_fifo_tready;
+    assign mux_trdy = ipudp_tready & in_mac_fifo_tready;
     assign in_mac_fifo_tdata = {mux_hdr_mac_dest, mux_hdr_mac_src};
+    assign in_mac_fifo_tvalid = mux_tvld_hdr_vld;
 
     //это пока для отключения портов, т.к. модули еще не написаны
     assign sd_tvld = 1'b0;
