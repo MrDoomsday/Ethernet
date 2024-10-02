@@ -31,7 +31,7 @@ THE SOFTWARE.
 /*
  * AXI lite register interface module (read)
  */
-module axil_reg_if_rd #
+module umstr_axil_reg_if_rd #
 (
     // Width of data bus in bits
     parameter DATA_WIDTH = 32,

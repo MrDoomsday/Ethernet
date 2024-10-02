@@ -1,7 +1,7 @@
 /*
 	module for aligned packet  
 */
-module arp (
+module umstr_arp (
 
 	input 		logic 			clk,
 	input 		logic 			reset_n,
@@ -45,12 +45,13 @@ module arp (
 	enum bit [5:0] {
 		SC_IDLE,
 		SC_CHECK[0:9],
+		SC_WAIT_LAST,
 		SC_CHECK_TYPE,
 		SC_WAIT_ANSWER
 	} state_check, state_check_next;//автомат для проверки входящего пакета на принадлежность к протоколу ARP
 
 	reg arp_ok;
-
+	logic arp_request_trdy_next;
 
 	reg [47:0] mac_destination_request, mac_destination_request_r;
 	reg [47:0] mac_source_request, mac_source_request_r;
@@ -70,9 +71,8 @@ module arp (
 	reg [47:0] target_mac_address_request, target_mac_address_request_r;
 	reg [31:0] target_ip_address_request, target_ip_address_request_r;
 
-	logic word_vld;
-	logic fsm_send_busy;
-	
+	logic fsm_send_busy, fsm_send_busy_next;
+
 	enum logic [3:0] {
 		RP_IDLE,
 		RP_SEND_MAC,
@@ -96,7 +96,7 @@ module arp (
 	
 	always_comb begin
 		state_check_next = state_check;
-		arp_request_trdy_o = 1'b1;
+		arp_request_trdy_next = arp_request_trdy_o;
 		
 		case(state_check)
 			SC_IDLE: begin
@@ -171,40 +171,55 @@ module arp (
 			
 			SC_CHECK9: begin
 				if(arp_request_tvld_i) begin
-					/*if(arp_request_tlast_i) state_check_next = SC_IDLE;//состояние пока под вопросом
-					else */state_check_next = SC_CHECK_TYPE;
+					if(arp_request_tlast_i) begin
+						arp_request_trdy_next = 1'b0;
+						state_check_next = SC_CHECK_TYPE;
+					end
+					else begin
+						state_check_next = SC_WAIT_LAST;
+					end
+				end
+			end
+
+			SC_WAIT_LAST: begin
+				if(arp_request_tvld_i && arp_request_tlast_i) begin
+					arp_request_trdy_next = 1'b0;//пока мы проверяем пакет, то не хотим принимать что-то еще
+					state_check_next = SC_CHECK_TYPE;
 				end
 			end
 
 			SC_CHECK_TYPE: begin
-				arp_request_trdy_o = 1'b0;
 				if(arp_ok) begin
 					if(fsm_send_busy) 
 						state_check_next = SC_WAIT_ANSWER;
 					else begin
-						if(arp_request_tvld_i) begin
-							arp_request_trdy_o = 1'b1;
-							if(arp_request_tlast_i) state_check_next = SC_IDLE;
-							else state_check_next = SC_CHECK0;
-						end
-						else begin
-							state_check_next = SC_IDLE;
-						end
+						arp_request_trdy_next = 1'b1;
+						state_check_next = SC_IDLE;
 					end
 				end
 				else begin
+					arp_request_trdy_next = 1'b1;
 					state_check_next = SC_IDLE;
 				end
 			end
-			
+
 			SC_WAIT_ANSWER: begin
-				if(!fsm_send_busy) state_check_next = SC_IDLE;
+				if(!fsm_send_busy) begin
+					arp_request_trdy_next = 1'b1;
+					state_check_next = SC_IDLE;
+				end
 			end
 			
 			default: state_check_next = SC_IDLE;
 		endcase
 	end
 
+	always_ff @(posedge clk or negedge reset_n) begin
+		if(!reset_n) 
+			arp_request_trdy_o <= 1'b1;
+		else 
+			arp_request_trdy_o <= arp_request_trdy_next;
+	end
 	
 
 //register arp message 			
@@ -301,17 +316,24 @@ module arp (
 	always_ff @(posedge clk or negedge reset_n) begin
 		if(!reset_n) state_resp <= RP_IDLE;
 		else state_resp <= state_resp_next;
-	end		
+	end
+
+	always_ff @(posedge clk or negedge reset_n) begin
+		if(!reset_n) fsm_send_busy <= 1'b0;
+		else fsm_send_busy <= fsm_send_busy_next;
+	end
 
 
 	always_comb begin
 		state_resp_next = state_resp;
-		fsm_send_busy = 1'b1;
+		fsm_send_busy_next = fsm_send_busy;
 		
 		case(state_resp)
 			RP_IDLE: begin
-				fsm_send_busy = 1'b0;
-				if(arp_ok) state_resp_next = RP_SEND_MAC;
+				if(arp_ok) begin
+					fsm_send_busy_next = 1'b1;
+					state_resp_next = RP_SEND_MAC;
+				end
 				else state_resp_next = RP_IDLE;
 			end
 
@@ -352,7 +374,10 @@ module arp (
 			end
 				
 			RP_SEND6: begin
-				if(resp_rdy) state_resp_next = RP_IDLE;
+				if(resp_rdy) begin
+					fsm_send_busy_next = 1'b0;
+					state_resp_next = RP_IDLE;
+				end
 				else state_resp_next = RP_SEND6;
 			end
 			

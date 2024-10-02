@@ -225,7 +225,7 @@ module udp_master_top #(
 /***********************************************************************************************************************/
 
 
-    axil2reg #(
+    umstr_axil2reg #(
         .MAC_BOARD_DEFAULT  (MAC_BOARD_DEFAULT),
         .IP_BOARD_DEFAULT   (IP_BOARD_DEFAULT),
         .PORT_BOARD_DEFAULT (PORT_BOARD_DEFAULT),
@@ -289,46 +289,46 @@ module udp_master_top #(
     );
 
 
-    user_data_packer # (
+    umstr_user_data_packer # (
       .ID_WIDTH(UID_WIDTH)
     ) user_data_packer_inst (
-      .clk                      (clk),
-      .reset_n                  (reset_n),
+        .clk                      (clk),
+        .reset_n                  (reset_n),
 
-      .cntrl_mac_src_i          (cntrl_mac_src_board),
-      .cntrl_ip_src_i           (cntrl_ip_src_board),
-      .cntrl_port_src_i         (cntrl_port_src_board),
-      .cntrl_addr_cell_dest_i   (cntrl_addr_cell_dest[UID_WIDTH-1:0]),
-      .cntrl_mac_dest_i         (cntrl_mac_dest),
-      .cntrl_ip_dest_i          (cntrl_ip_dest),
-      .cntrl_port_dest_i        (cntrl_port_dest),
-      .cntrl_cell_dest_wr_i     (cntrl_cell_dest_wr),
-      .cntrl_mac_dest_rdata_o   (cntrl_mac_dest_rdata),
-      .cntrl_ip_dest_rdata_o    (cntrl_ip_dest_rdata),
-      .cntrl_port_dest_rdata_o  (cntrl_port_dest_rdata),
+        .cntrl_mac_src_i          (cntrl_mac_src_board),
+        .cntrl_ip_src_i           (cntrl_ip_src_board),
+        .cntrl_port_src_i         (cntrl_port_src_board),
+        .cntrl_addr_cell_dest_i   (cntrl_addr_cell_dest[UID_WIDTH-1:0]),
+        .cntrl_mac_dest_i         (cntrl_mac_dest),
+        .cntrl_ip_dest_i          (cntrl_ip_dest),
+        .cntrl_port_dest_i        (cntrl_port_dest),
+        .cntrl_cell_dest_wr_i     (cntrl_cell_dest_wr),
+        .cntrl_mac_dest_rdata_o   (cntrl_mac_dest_rdata),
+        .cntrl_ip_dest_rdata_o    (cntrl_ip_dest_rdata),
+        .cntrl_port_dest_rdata_o  (cntrl_port_dest_rdata),
 
-      .user_in_tid_i            (user_tid_i),
-      .user_in_tdata_i          (user_tdata_i),
-      .user_in_tvld_i           (user_tvld_i),
-      .user_in_tlast_i          (user_tlast_i),
-      .user_in_tkeep_i          (user_tkeep_i),
-      .user_in_trdy_o           (user_trdy_o),
+        .user_in_tid_i            (user_tid_i),
+        .user_in_tdata_i          (user_tdata_i),
+        .user_in_tvld_i           (user_tvld_i),
+        .user_in_tlast_i          (user_tlast_i),
+        .user_in_tkeep_i          (user_tkeep_i),
+        .user_in_trdy_o           (user_trdy_o),
 
-      .hdr_mac_dest_o           (us_hdr_mac_dest),
-      .hdr_mac_src_o            (us_hdr_mac_src),
-      .hdr_ip_dest_o            (us_hdr_ip_dest),
-      .hdr_ip_src_o             (us_hdr_ip_src),
-      .hdr_port_dest_o          (us_hdr_port_dest),
-      .hdr_port_src_o           (us_hdr_port_src),
-      .user_out_tdata_o         (us_tdata),
-      .user_out_tvld_o          (us_tvld),
-      .user_out_tlast_o         (us_tlast),
-      .user_out_tkeep_o         (us_tkeep),
-      .user_out_rdy_i           (us_trdy)
+        .hdr_mac_dest_o           (us_hdr_mac_dest),
+        .hdr_mac_src_o            (us_hdr_mac_src),
+        .hdr_ip_dest_o            (us_hdr_ip_dest),
+        .hdr_ip_src_o             (us_hdr_ip_src),
+        .hdr_port_dest_o          (us_hdr_port_dest),
+        .hdr_port_src_o           (us_hdr_port_src),
+        .user_out_tdata_o         (us_tdata),
+        .user_out_tvld_o          (us_tvld),
+        .user_out_tlast_o         (us_tlast),
+        .user_out_tkeep_o         (us_tkeep),
+        .user_out_rdy_i           (us_trdy)
     );
   
 
-    st_splitter st_splitter_inst (
+    umstr_st_splitter st_splitter_inst (
         .clk                (clk),
         .reset_n            (reset_n),
         .from_tse_tdata_i   (from_tse_tdata_i),
@@ -356,7 +356,7 @@ module udp_master_top #(
 
 
     
-    mux_ipudp mux_ipudp_inst (
+    umstr_mux_ipudp mux_ipudp_inst (
         .clk                    (clk),
         .reset_n                (reset_n),
         .sd_hdr_mac_dest_i      (sd_hdr_mac_dest),
@@ -409,7 +409,7 @@ module udp_master_top #(
 
 
 
-    ip_udp_packer #(
+    umstr_ip_udp_packer #(
         .FIFO_SIZE_DATA(FIFO_SIZE_DATA),
         .FIFO_SIZE_HDR(FIFO_SIZE_HDR)
     ) ip_udp_packer_inst (
@@ -437,7 +437,7 @@ module udp_master_top #(
     );
 
 
-    axis_fifo # (
+    umstr_axis_fifo # (
         .T_DATA_WIDTH   (48+48),//mac src + mac dest
         .SIZE           (FIFO_SIZE_MAC)
     ) mac_fifo_inst (
@@ -456,7 +456,7 @@ module udp_master_top #(
 
 
 
-    arp arp_inst (
+    umstr_arp arp_inst (
         .clk                    (clk),
         .reset_n                (reset_n),
         .cntrl_mac_src_i        (cntrl_mac_src_board),
@@ -482,7 +482,7 @@ module udp_master_top #(
     );
 
 
-    ethII_top ethII_top_inst (
+    umstr_ethII_top ethII_top_inst (
         .clk                    (clk),
         .reset_n                (reset_n),
 

@@ -1,4 +1,4 @@
-module axis_fifo #(
+module umstr_axis_fifo #(
     parameter T_DATA_WIDTH = 32,
     parameter SIZE = 10
 )(

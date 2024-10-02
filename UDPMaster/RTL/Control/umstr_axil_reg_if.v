@@ -31,7 +31,7 @@ THE SOFTWARE.
 /*
  * AXI lite register interface module
  */
-module axil_reg_if #
+module umstr_axil_reg_if #
 (
     // Width of data bus in bits
     parameter DATA_WIDTH = 32,
@@ -85,7 +85,7 @@ module axil_reg_if #
     input  wire                   reg_rd_ack
 );
 
-axil_reg_if_wr #(
+umstr_axil_reg_if_wr #(
     .DATA_WIDTH(DATA_WIDTH),
     .ADDR_WIDTH(ADDR_WIDTH),
     .STRB_WIDTH(STRB_WIDTH),
@@ -121,7 +121,7 @@ axil_reg_if_wr_inst (
     .reg_wr_ack(reg_wr_ack)
 );
 
-axil_reg_if_rd #(
+umstr_axil_reg_if_rd #(
     .DATA_WIDTH(DATA_WIDTH),
     .ADDR_WIDTH(ADDR_WIDTH),
     .STRB_WIDTH(STRB_WIDTH),

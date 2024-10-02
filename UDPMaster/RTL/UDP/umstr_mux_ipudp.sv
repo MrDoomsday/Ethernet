@@ -1,4 +1,4 @@
-module mux_ipudp (
+module umstr_mux_ipudp (
     input       logic clk,
     input       logic reset_n,
 

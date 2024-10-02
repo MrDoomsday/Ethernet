@@ -1,4 +1,4 @@
-module ethII_mux (
+module umstr_ethII_mux (
     input       logic clk,
     input       logic reset_n,
 

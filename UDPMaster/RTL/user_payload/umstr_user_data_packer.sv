@@ -4,7 +4,7 @@
     Зачем несколько адресов назначения? Вдруг придется отправлять разные потоки данных, например с массива разных АЦП и т.д - вариантов применения чрезвычайно много
 */
 
-module user_data_packer #(
+module umstr_user_data_packer #(
     parameter ID_WIDTH = 10//ширина порта канала
 )(
     input       logic                   clk,
@@ -81,7 +81,7 @@ module user_data_packer #(
 /*******************************************            INSTANCE         ***********************************************/
 /***********************************************************************************************************************/
 /***********************************************************************************************************************/
-    dual_port_ram #(
+    umstr_dual_port_ram #(
         .DATA_WIDTH(48), 
         .ADDR_WIDTH(ID_WIDTH)
     ) mac_dest_table (
@@ -98,7 +98,7 @@ module user_data_packer #(
         .q_b        (mac_dest_rdram)
     );
 
-    dual_port_ram #(
+    umstr_dual_port_ram #(
         .DATA_WIDTH(32), 
         .ADDR_WIDTH(ID_WIDTH)
     ) ip_dest_table (
@@ -115,7 +115,7 @@ module user_data_packer #(
         .q_b        (ip_dest_rdram)
     );
 
-    dual_port_ram #(
+    umstr_dual_port_ram #(
         .DATA_WIDTH(16), 
         .ADDR_WIDTH(ID_WIDTH)
     ) port_dest_table (

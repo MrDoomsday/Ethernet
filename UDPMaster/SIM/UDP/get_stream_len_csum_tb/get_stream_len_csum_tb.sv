@@ -24,7 +24,7 @@ module get_stream_len_csum_tb();
 
 
 
-    get_stream_len_csum #(
+    umstr_get_stream_len_csum #(
         .FIFO_SIZE_DATA(FIFO_SIZE_DATA),
         .FIFO_SIZE_HDR(FIFO_SIZE_HDR)
     ) DUT (

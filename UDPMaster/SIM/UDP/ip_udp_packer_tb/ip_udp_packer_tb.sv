@@ -22,7 +22,7 @@ module ip_udp_packer_tb();
     stream_intf m_intf (clk, reset_n);
     test test_n;
 
-    ip_udp_packer #(
+    umstr_ip_udp_packer #(
         .FIFO_SIZE_DATA(FIFO_SIZE_DATA),
         .FIFO_SIZE_HDR(FIFO_SIZE_HDR)
     ) DUT (

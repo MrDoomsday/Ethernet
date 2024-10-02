@@ -1,4 +1,4 @@
-module ethII_packer (
+module umstr_ethII_packer (
     input       logic clk,
     input       logic reset_n,
 
@@ -59,8 +59,8 @@ module ethII_packer (
 
     always_comb begin
         state_next = state;
-        hdr_mac_rdy_o = ~hdr_mac_vld_i;
-        user_trdy_o = ~user_tvld_i;
+        hdr_mac_rdy_o = 1'b0;
+        user_trdy_o = 1'b0;
         mac_save_reg = 1'b0;
 
         case(state)

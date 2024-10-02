@@ -1,4 +1,4 @@
-module ip_udp_packer #(
+module umstr_ip_udp_packer #(
     parameter FIFO_SIZE_DATA = 10,
     parameter FIFO_SIZE_HDR = 10
 )(
@@ -177,7 +177,7 @@ module ip_udp_packer #(
 /*******************************************            INSTANCE         ***********************************************/
 /***********************************************************************************************************************/
 /***********************************************************************************************************************/
-	get_stream_len_csum #(
+	umstr_get_stream_len_csum #(
 		.FIFO_SIZE_DATA(FIFO_SIZE_DATA),
 		.FIFO_SIZE_HDR(FIFO_SIZE_HDR)
 	) get_stream_len_csum_inst (

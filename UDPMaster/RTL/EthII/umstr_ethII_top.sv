@@ -1,4 +1,4 @@
-module ethII_top (
+module umstr_ethII_top (
     input       logic clk,
     input       logic reset_n,
 
@@ -64,7 +64,7 @@ module ethII_top (
 /*******************************************            INSTANCE         ***********************************************/
 /***********************************************************************************************************************/
 /***********************************************************************************************************************/
-    ethII_mux ethII_mux_inst (
+    umstr_ethII_mux ethII_mux_inst (
         .clk            (clk),
         .reset_n        (reset_n),
         .arp_mac_dest_i (arp_mac_dest_i),
@@ -100,7 +100,7 @@ module ethII_top (
         .user_trdy_i    (user_trdy)
     );
 
-    ethII_packer  ethII_packer_inst (
+    umstr_ethII_packer  ethII_packer_inst (
         .clk            (clk),
         .reset_n        (reset_n),
         .hdr_mac_dest_i (hdr_mac_dest),

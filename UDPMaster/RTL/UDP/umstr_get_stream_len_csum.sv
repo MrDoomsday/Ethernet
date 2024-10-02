@@ -1,4 +1,4 @@
-module get_stream_len_csum #(
+module umstr_get_stream_len_csum #(
     parameter FIFO_SIZE_DATA = 10,
     parameter FIFO_SIZE_HDR = 10
 )(
@@ -59,7 +59,7 @@ module get_stream_len_csum #(
 /*******************************************            INSTANCE         ***********************************************/
 /***********************************************************************************************************************/
 /***********************************************************************************************************************/
-    axis_fifo #(
+    umstr_axis_fifo #(
         .T_DATA_WIDTH(32+1+4),//data + last + tkeep
         .SIZE(FIFO_SIZE_DATA)
     ) fifo_stream (
@@ -80,7 +80,7 @@ module get_stream_len_csum #(
         .fifo_full_o    ()
     );
 
-    axis_fifo #(
+    umstr_axis_fifo #(
         .T_DATA_WIDTH(32+32+32+32),//data checksum[15:0] + data length[15:0] + port_src[15:0] + port_dest[15:0] + ip_src[31:0] + ip_dest[31:0]
         .SIZE(FIFO_SIZE_HDR)
     ) fifo_header (
